@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankLytics | Executive Summary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .clean-card { 
+            background-color: #1e293b; 
+            border: 1px solid #334155;
+            transition: box-shadow 0.2s ease, transform 0.2s ease; 
+        }
+        .clean-card:hover { 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); 
+            transform: translateY(-2px); 
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 50;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner { 
+            border: 4px solid #334155; 
+            border-top: 4px solid #3b82f6; 
+            border-radius: 50%; width: 48px; height: 48px; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <div id="loadingOverlay">
+        <div class="spinner mb-4"></div>
+        <h2 class="text-lg font-semibold text-slate-200">Loading Datasets...</h2>
+        <p class="text-sm text-slate-400 mt-2">Parsing D1_Cleaned.csv</p>
+    </div>
+
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-chart-pie text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">BankLytics</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto text-sm font-medium">
+            <a href="index.html" class="flex items-center gap-3 text-white bg-slate-800 px-4 py-3 rounded-lg border-l-4 border-blue-500 shadow-sm">
+                <i class="fa-solid fa-layer-group w-5 text-center text-blue-400"></i> <span>Executive Summary</span>
+            </a>
+            <a href="topics.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-comments w-5 text-center"></i> <span>Sentiment & Topics</span>
+            </a>
+            <a href="operations.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-headset w-5 text-center"></i> <span>Operations & Support</span>
+            </a>
+            <a href="influence.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-users-viewfinder w-5 text-center"></i> <span>Influence Radar</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+            <div>
+                <h2 class="text-xl font-bold text-white">Executive Summary</h2>
+                <p class="text-xs text-slate-400">Live sentiment monitoring across banking partners</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-filter text-slate-400 ml-2"></i>
+                <select id="bankFilter" class="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer w-48 pr-2">
+                    <option value="All">All Banks Portfolio</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-6 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="clean-card rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fa-solid fa-database text-4xl text-blue-500"></i></div>
+                    <p class="text-sm text-slate-400 font-semibold mb-1 uppercase tracking-wider">Total Volume</p>
+                    <h3 id="kpi-volume" class="text-3xl font-bold text-white">0</h3>
+                </div>
+                <div class="clean-card rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fa-solid fa-face-smile-beam text-4xl text-emerald-500"></i></div>
+                    <p class="text-sm text-slate-400 font-semibold mb-1 uppercase tracking-wider">Avg Sentiment</p>
+                    <h3 id="kpi-sentiment" class="text-3xl font-bold text-white">0 <span class="text-base font-medium text-slate-500">/ 10</span></h3>
+                </div>
+                <div class="clean-card rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fa-solid fa-check-double text-4xl text-indigo-500"></i></div>
+                    <p class="text-sm text-slate-400 font-semibold mb-1 uppercase tracking-wider">Resolution Rate</p>
+                    <h3 id="kpi-resolved" class="text-3xl font-bold text-indigo-400">0%</h3>
+                </div>
+                <div class="clean-card rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fa-solid fa-fire-flame-curved text-4xl text-rose-500"></i></div>
+                    <p class="text-sm text-slate-400 font-semibold mb-1 uppercase tracking-wider">High Priority</p>
+                    <h3 id="kpi-priority" class="text-3xl font-bold text-rose-500">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Sentiment Breakdown</h3>
+                        <p class="text-sm text-slate-400">Positive vs Neutral vs Negative</p>
+                    </div>
+                    <div class="flex-1 relative flex items-center justify-center min-h-[250px]">
+                        <canvas id="sentimentDonutChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col relative">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Resolution Performance</h3>
+                        <p class="text-sm text-slate-400">Tickets resolved vs Total (Target 85%)</p>
+                    </div>
+                    <div class="flex-1 relative flex items-center justify-center min-h-[250px]">
+                        <canvas id="resolutionGaugeChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center mt-12 pointer-events-none">
+                            <span id="gaugeValue" class="text-3xl font-bold text-white">0%</span>
+                            <span class="text-xs text-slate-400 uppercase tracking-wider">Resolved</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Volume by Source</h3>
+                        <p class="text-sm text-slate-400">Where are customers talking?</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[250px]">
+                        <canvas id="sourceBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="clean-card rounded-xl p-6">
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Bank Performance Comparison</h3>
+                        <p class="text-sm text-slate-400">Average Sentiment Score across all banking partners</p>
+                    </div>
+                </div>
+                <div class="w-full relative h-[300px]">
+                    <canvas id="bankColumnChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let globalData = [];
+        let sentimentDonutChart, resolutionGaugeChart, bankColumnChart, sourceBarChart;
+
+        // Dark Theme Chart Defaults
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8'; // text-slate-400
+        Chart.defaults.borderColor = '#334155'; // border-slate-700
+        
+        const tooltipOptions = { 
+            backgroundColor: 'rgba(15, 23, 42, 0.95)', // slate-900
+            titleFont: { size: 13, family: 'Inter' },
+            bodyFont: { size: 14, family: 'Inter', weight: 'bold' },
+            padding: 12, 
+            cornerRadius: 8, 
+            displayColors: true,
+            borderColor: '#334155',
+            borderWidth: 1
+        };
+
+        function initCharts() {
+            // 1. Sentiment Donut Chart
+            const ctxDonut = document.getElementById('sentimentDonutChart').getContext('2d');
+            sentimentDonutChart = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: { labels: ['Positive', 'Neutral', 'Negative'], datasets: [{ data: [0,0,0], backgroundColor: ['#10b981', '#64748b', '#ef4444'], borderWidth: 0, cutout: '75%' }] },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, color: '#e2e8f0' } }, tooltip: tooltipOptions }
+                }
+            });
+
+            // 2. Resolution Gauge Chart (Half Doughnut)
+            const ctxGauge = document.getElementById('resolutionGaugeChart').getContext('2d');
+            resolutionGaugeChart = new Chart(ctxGauge, {
+                type: 'doughnut',
+                data: { labels: ['Resolved', 'Pending'], datasets: [{ data: [0, 100], backgroundColor: ['#6366f1', '#1e293b'], borderWidth: 0, cutout: '80%' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    circumference: 180, rotation: 270, // Makes it a half circle
+                    plugins: { legend: { display: false }, tooltip: tooltipOptions }
+                }
+            });
+
+            // 3. Source Distribution (Horizontal Bar)
+            const ctxSource = document.getElementById('sourceBarChart').getContext('2d');
+            sourceBarChart = new Chart(ctxSource, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Volume', data: [], backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                options: {
+                    indexAxis: 'y', // Horizontal Bar
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: tooltipOptions },
+                    scales: {
+                        x: { display: false, grid: { display: false } },
+                        y: { grid: { display: false }, border: {display: false}, ticks: { color: '#e2e8f0' } }
+                    }
+                }
+            });
+
+            // 4. Bank Column Chart
+            const ctxBank = document.getElementById('bankColumnChart').getContext('2d');
+            bankColumnChart = new Chart(ctxBank, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Avg Sentiment Score', data: [], backgroundColor: '#3b82f6', borderRadius: {topLeft: 6, topRight: 6} }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: tooltipOptions },
+                    scales: {
+                        y: { beginAtZero: true, max: 10, grid: { color: '#334155', borderDash: [4, 4] }, border: {display: false} },
+                        x: { grid: { display: false }, border: {display: false}, ticks: { color: '#e2e8f0', font: {weight: 'bold'} } }
+                    }
+                }
+            });
+        }
+
+        function loadData() {
+            Papa.parse('D1_Cleaned.csv', {
+                download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+                complete: function(results) {
+                    globalData = results.data;
+                    populateBankFilter();
+                    document.getElementById('loadingOverlay').style.opacity = '0';
+                    setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 300);
+                    updateDashboard("All");
+                },
+                error: function(err) { console.error("Error:", err); alert("Error loading CSV."); }
+            });
+        }
+
+        function populateBankFilter() {
+            const banks = [...new Set(globalData.map(item => item.BankName).filter(Boolean))].sort();
+            const select = document.getElementById('bankFilter');
+            banks.forEach(bank => { select.add(new Option(bank, bank)); });
+        }
+
+        function processData(bankFilter) {
+            let filtered = bankFilter === "All" ? globalData : globalData.filter(r => r.BankName === bankFilter);
+            
+            // KPIs
+            let volume = filtered.length;
+            let avgSentiment = volume > 0 ? (filtered.reduce((sum, r) => sum + (r.SentimentScore || 0), 0) / volume).toFixed(1) : 0;
+            let resolvedCount = filtered.filter(r => String(r.IsResolved).toLowerCase() === 'true').length;
+            let resolvedRate = volume > 0 ? Math.round((resolvedCount / volume) * 100) : 0;
+            let priorityCount = filtered.filter(r => r.Priority.trim() === "High").length;
+
+            // Sentiment Donut Data
+            let posCount = filtered.filter(r => r.SentimentCategory === "Positive").length;
+            let neuCount = filtered.filter(r => r.SentimentCategory === "Neutral").length;
+            let negCount = filtered.filter(r => r.SentimentCategory === "Negative").length;
+
+            // Source Bar Data
+            let sourceMap = {};
+            filtered.forEach(r => { if(r.Source) sourceMap[r.Source] = (sourceMap[r.Source] || 0) + 1; });
+            let sourcesSorted = Object.entries(sourceMap).sort((a,b) => b[1] - a[1]);
+
+            // Bank Column Data
+            let bankScoresMap = {};
+            let banksToAnalyze = bankFilter === "All" ? [...new Set(globalData.map(r => r.BankName).filter(Boolean))] : [bankFilter];
+            
+            banksToAnalyze.forEach(bank => {
+                let bData = globalData.filter(r => r.BankName === bank);
+                bankScoresMap[bank] = bData.length > 0 ? (bData.reduce((s, r) => s + r.SentimentScore, 0) / bData.length).toFixed(2) : 0;
+            });
+
+            return { 
+                volume, sentiment: avgSentiment, resolvedRate, priority: priorityCount,
+                sentimentData: [posCount, neuCount, negCount],
+                sources: { labels: sourcesSorted.map(s => s[0]), data: sourcesSorted.map(s => s[1]) },
+                bankScores: { labels: Object.keys(bankScoresMap), data: Object.values(bankScoresMap) }
+            };
+        }
+
+        function updateDashboard(bankName) {
+            const data = processData(bankName);
+
+            // Update KPIs
+            document.getElementById('kpi-volume').innerText = data.volume.toLocaleString();
+            document.getElementById('kpi-sentiment').innerHTML = `${data.sentiment} <span class="text-base font-medium text-slate-500">/ 10</span>`;
+            document.getElementById('kpi-resolved').innerText = data.resolvedRate + "%";
+            document.getElementById('kpi-priority').innerText = data.priority.toLocaleString();
+            document.getElementById('gaugeValue').innerText = data.resolvedRate + "%";
+
+            // Update Donut
+            sentimentDonutChart.data.datasets[0].data = data.sentimentData;
+            sentimentDonutChart.update();
+
+            // Update Gauge
+            resolutionGaugeChart.data.datasets[0].data = [data.resolvedRate, 100 - data.resolvedRate];
+            // Change gauge color based on performance (Target 85%)
+            let gaugeColor = data.resolvedRate >= 85 ? '#10b981' : (data.resolvedRate >= 60 ? '#f59e0b' : '#ef4444');
+            resolutionGaugeChart.data.datasets[0].backgroundColor = [gaugeColor, '#1e293b'];
+            resolutionGaugeChart.update();
+
+            // Update Source Bar
+            sourceBarChart.data.labels = data.sources.labels;
+            sourceBarChart.data.datasets[0].data = data.sources.data;
+            sourceBarChart.update();
+
+            // Update Bank Column Comparison
+            bankColumnChart.data.labels = data.bankScores.labels;
+            bankColumnChart.data.datasets[0].data = data.bankScores.data;
+            // Highlight the selected bank if filtering, or just use theme color
+            bankColumnChart.data.datasets[0].backgroundColor = data.bankScores.labels.map(label => label === bankName ? '#6366f1' : '#334155');
+            bankColumnChart.update();
+        }
+
+        document.getElementById('bankFilter').addEventListener('change', e => updateDashboard(e.target.value));
+        document.addEventListener('DOMContentLoaded', () => { initCharts(); loadData(); });
+    </script>
+</body>
+</html>

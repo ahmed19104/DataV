@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankLytics | Sentiment & Topics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .clean-card { 
+            background-color: #1e293b; 
+            border: 1px solid #334155;
+            transition: box-shadow 0.2s ease, transform 0.2s ease; 
+        }
+        .clean-card:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); transform: translateY(-2px); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        .heatmap-cell { transition: all 0.2s ease; cursor: pointer; }
+        .heatmap-cell:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-chart-pie text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">BankLytics</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto text-sm font-medium">
+            <a href="index.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-layer-group w-5 text-center"></i> <span>Executive Summary</span>
+            </a>
+            <a href="topics.html" class="flex items-center gap-3 text-white bg-slate-800 px-4 py-3 rounded-lg border-l-4 border-emerald-500 shadow-sm">
+                <i class="fa-solid fa-comments w-5 text-center text-emerald-400"></i> <span>Sentiment & Topics</span>
+            </a>
+            <a href="operations.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-headset w-5 text-center"></i> <span>Operations & Support</span>
+            </a>
+            <a href="influence.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-users-viewfinder w-5 text-center"></i> <span>Influence Radar</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+            <div>
+                <h2 class="text-xl font-bold text-white">Sentiment & Topics Analysis</h2>
+                <p class="text-xs text-slate-400">Deep dive into customer discussions and pain points</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-filter text-slate-400 ml-2"></i>
+                <select id="bankFilter" class="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer w-48 pr-2">
+                    <option value="All">All Banks Portfolio</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-6 max-w-7xl mx-auto w-full">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Feedback Trend</h3>
+                        <p class="text-sm text-slate-400">Volume of mentions over time</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[300px]">
+                        <canvas id="trendLineChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Topics by Resolution Status</h3>
+                        <p class="text-sm text-slate-400">What are users talking about? (Resolved vs Pending)</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[300px]">
+                        <canvas id="topicsStackedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Sentiment Distribution</h3>
+                        <p class="text-sm text-slate-400">Spread of scores (1-10) per bank (Detecting Outliers)</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[350px]">
+                        <canvas id="sentimentScatterChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Pain Points Heatmap</h3>
+                        <p class="text-sm text-slate-400">Concentration of issues: Banks vs Topics</p>
+                    </div>
+                    <div class="flex-1 overflow-x-auto flex items-center justify-center min-h-[350px]">
+                        <div id="heatmapContainer" class="w-full text-sm">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let globalData = [];
+        let trendLineChart, topicsStackedChart, sentimentScatterChart;
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        const tooltipOptions = { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 13 }, bodyFont: { size: 14, weight: 'bold' }, padding: 12, cornerRadius: 8, borderColor: '#334155', borderWidth: 1 };
+
+        function initCharts() {
+            // 1. Line Chart (Trend)
+            const ctxLine = document.getElementById('trendLineChart').getContext('2d');
+            let gradient = ctxLine.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.5)'); // Emerald
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+            trendLineChart = new Chart(ctxLine, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Mentions', data: [], borderColor: '#10b981', backgroundColor: gradient, borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#fff' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tooltipOptions }, scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] }, border: {display: false} }, x: { grid: { display: false }, border: {display: false} } } }
+            });
+
+            // 2. Stacked Bar Chart (Topics)
+            const ctxStacked = document.getElementById('topicsStackedChart').getContext('2d');
+            topicsStackedChart = new Chart(ctxStacked, {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: tooltipOptions },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, border: {display: false}, ticks: { maxRotation: 45, minRotation: 45 } },
+                        y: { stacked: true, beginAtZero: true, grid: { borderDash: [4, 4] }, border: {display: false} }
+                    }
+                }
+            });
+
+            // 3. Scatter Plot (Distribution/Boxplot Alternative)
+            const ctxScatter = document.getElementById('sentimentScatterChart').getContext('2d');
+            sentimentScatterChart = new Chart(ctxScatter, {
+                type: 'scatter',
+                data: { datasets: [{ label: 'Score', data: [], backgroundColor: 'rgba(59, 130, 246, 0.6)', borderColor: '#3b82f6', borderWidth: 1, pointRadius: 5, pointHoverRadius: 8 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { ...tooltipOptions, callbacks: { label: (ctx) => `Score: ${ctx.raw.y} (ID: ${ctx.raw.id})` } } },
+                    scales: {
+                        x: { type: 'category', labels: [], grid: { display: false }, border: {display: false} },
+                        y: { min: 0, max: 11, grid: { borderDash: [4, 4] }, border: {display: false}, ticks: { stepSize: 2 } }
+                    }
+                }
+            });
+        }
+
+        function loadData() {
+            Papa.parse('D1_Cleaned.csv', {
+                download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+                complete: function(results) {
+                    globalData = results.data;
+                    populateBankFilter();
+                    updateDashboard("All");
+                }
+            });
+        }
+
+        function populateBankFilter() {
+            const banks = [...new Set(globalData.map(item => item.BankName).filter(Boolean))].sort();
+            const select = document.getElementById('bankFilter');
+            banks.forEach(bank => select.add(new Option(bank, bank)));
+        }
+
+        function processData(bankFilter) {
+            let filtered = bankFilter === "All" ? globalData : globalData.filter(r => r.BankName === bankFilter);
+            
+            // --- 1. Line Chart Data (Weekly grouping roughly) ---
+            let dateMap = {};
+            [...filtered].sort((a,b) => new Date(a.CreatedAt) - new Date(b.CreatedAt)).forEach(r => {
+                if(!r.CreatedAt) return;
+                let d = new Date(r.CreatedAt);
+                let key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-W${Math.ceil(d.getDate()/7)}`; // Group by Week
+                dateMap[key] = (dateMap[key] || 0) + 1;
+            });
+
+            // --- 2. Stacked Bar Data (Topics) ---
+            let topicsMap = {};
+            filtered.forEach(r => {
+                if(!r.Topic) return;
+                if(!topicsMap[r.Topic]) topicsMap[r.Topic] = { resolved: 0, pending: 0 };
+                String(r.IsResolved).toLowerCase() === 'true' ? topicsMap[r.Topic].resolved++ : topicsMap[r.Topic].pending++;
+            });
+            let sortedTopics = Object.keys(topicsMap).sort((a,b) => (topicsMap[b].resolved + topicsMap[b].pending) - (topicsMap[a].resolved + topicsMap[a].pending));
+
+            // --- 3. Scatter Plot Data (Distribution) ---
+            // To simulate distribution without overlap, we add a tiny random jitter to the X-axis index
+            let banks = [...new Set(filtered.map(r => r.BankName))].sort();
+            let scatterPoints = filtered.map(r => {
+                let bankIndex = banks.indexOf(r.BankName);
+                let jitter = (Math.random() - 0.5) * 0.4; // Small offset left/right
+                return { x: banks[bankIndex], y: r.SentimentScore, id: r.Id, r: 5 }; // We map x directly to category label
+            });
+
+            // --- 4. Heatmap Data (Bank vs Topic Volume) ---
+            let allTopics = [...new Set(globalData.map(r => r.Topic).filter(Boolean))];
+            let allBanks = [...new Set(globalData.map(r => r.BankName).filter(Boolean))].sort();
+            
+            let heatMatrix = {};
+            allBanks.forEach(b => heatMatrix[b] = {});
+            let maxHeatValue = 0;
+
+            globalData.forEach(r => {
+                if(r.BankName && r.Topic) {
+                    heatMatrix[r.BankName][r.Topic] = (heatMatrix[r.BankName][r.Topic] || 0) + 1;
+                    if(heatMatrix[r.BankName][r.Topic] > maxHeatValue) maxHeatValue = heatMatrix[r.BankName][r.Topic];
+                }
+            });
+
+            return {
+                trend: { labels: Object.keys(dateMap), data: Object.values(dateMap) },
+                topics: { 
+                    labels: sortedTopics, 
+                    resolved: sortedTopics.map(t => topicsMap[t].resolved), 
+                    pending: sortedTopics.map(t => topicsMap[t].pending) 
+                },
+                scatter: { labels: banks, points: scatterPoints },
+                heatmap: { matrix: heatMatrix, banks: allBanks, topics: allTopics, maxVal: maxHeatValue }
+            };
+        }
+
+        function buildHeatmap(heatData, selectedBank) {
+            const container = document.getElementById('heatmapContainer');
+            let html = `<div class="grid grid-cols-${heatData.topics.length + 1} gap-1 w-full">`;
+            
+            // Header Row (Topics)
+            html += `<div class="p-2"></div>`; // Empty top-left corner
+            heatData.topics.forEach(topic => {
+                html += `<div class="p-2 text-xs font-semibold text-slate-400 text-center flex items-end justify-center h-16"><span class="-rotate-45 block transform origin-bottom-left">${topic}</span></div>`;
+            });
+
+            // Rows (Banks)
+            heatData.banks.forEach(bank => {
+                let opacityFilter = (selectedBank !== "All" && bank !== selectedBank) ? 'opacity-30' : 'opacity-100';
+                
+                html += `<div class="p-2 text-right text-xs font-semibold text-slate-300 flex items-center justify-end ${opacityFilter}">${bank}</div>`;
+                
+                heatData.topics.forEach(topic => {
+                    let val = heatData.matrix[bank][topic] || 0;
+                    // Calculate color intensity (Red scale for issues)
+                    let intensity = heatData.maxVal > 0 ? (val / heatData.maxVal) : 0;
+                    // Base color: #ef4444 (Red-500)
+                    let bgColor = val === 0 ? '#1e293b' : `rgba(239, 68, 68, ${0.1 + (intensity * 0.9)})`;
+                    let textColor = intensity > 0.5 ? '#fff' : '#94a3b8';
+
+                    html += `<div class="heatmap-cell h-10 rounded flex items-center justify-center text-xs font-bold ${opacityFilter}" 
+                                  style="background-color: ${bgColor}; color: ${textColor};"
+                                  title="${bank} - ${topic}: ${val} tickets">
+                                ${val > 0 ? val : '-'}
+                             </div>`;
+                });
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function updateDashboard(bankName) {
+            const data = processData(bankName);
+
+            // 1. Line Chart
+            trendLineChart.data.labels = data.trend.labels;
+            trendLineChart.data.datasets[0].data = data.trend.data;
+            trendLineChart.update();
+
+            // 2. Stacked Bar
+            topicsStackedChart.data.labels = data.topics.labels;
+            topicsStackedChart.data.datasets = [
+                { label: 'Resolved', data: data.topics.resolved, backgroundColor: '#10b981', borderRadius: {topLeft: 2, topRight: 2} },
+                { label: 'Pending', data: data.topics.pending, backgroundColor: '#f59e0b', borderRadius: {topLeft: 2, topRight: 2} }
+            ];
+            topicsStackedChart.update();
+
+            // 3. Scatter Plot
+            sentimentScatterChart.data.labels = data.scatter.labels; // Set Category Labels
+            sentimentScatterChart.data.datasets[0].data = data.scatter.points;
+            
+            // Color scatter points based on sentiment
+            sentimentScatterChart.data.datasets[0].backgroundColor = data.scatter.points.map(p => {
+                if(p.y <= 4) return 'rgba(239, 68, 68, 0.6)'; // Red
+                if(p.y <= 6) return 'rgba(148, 163, 184, 0.6)'; // Gray
+                return 'rgba(16, 185, 129, 0.6)'; // Green
+            });
+            sentimentScatterChart.data.datasets[0].borderColor = sentimentScatterChart.data.datasets[0].backgroundColor.map(c => c.replace('0.6', '1'));
+            sentimentScatterChart.update();
+
+            // 4. Heatmap
+            buildHeatmap(data.heatmap, bankName);
+        }
+
+        document.getElementById('bankFilter').addEventListener('change', e => updateDashboard(e.target.value));
+        document.addEventListener('DOMContentLoaded', () => { initCharts(); loadData(); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankLytics | Operations & Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .clean-card { background-color: #1e293b; border: 1px solid #334155; transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .clean-card:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); transform: translateY(-2px); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        /* Bullet Chart specific styles */
+        .bullet-container { position: relative; height: 24px; background: #334155; border-radius: 4px; overflow: hidden; }
+        .bullet-bad { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(239, 68, 68, 0.2); width: 50%; }
+        .bullet-satisfactory { position: absolute; left: 50%; top: 0; bottom: 0; background: rgba(245, 158, 11, 0.2); width: 35%; }
+        .bullet-good { position: absolute; left: 85%; top: 0; bottom: 0; background: rgba(16, 185, 129, 0.2); width: 15%; }
+        .bullet-measure { position: absolute; left: 0; top: 6px; bottom: 6px; background: #3b82f6; border-radius: 2px; transition: width 0.5s ease; z-index: 2; }
+        .bullet-target { position: absolute; top: 0; bottom: 0; width: 4px; background: #fff; z-index: 3; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-chart-pie text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">BankLytics</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto text-sm font-medium">
+            <a href="index.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-layer-group w-5 text-center"></i> <span>Executive Summary</span>
+            </a>
+            <a href="topics.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-comments w-5 text-center"></i> <span>Sentiment & Topics</span>
+            </a>
+            <a href="operations.html" class="flex items-center gap-3 text-white bg-slate-800 px-4 py-3 rounded-lg border-l-4 border-indigo-500 shadow-sm">
+                <i class="fa-solid fa-headset w-5 text-center text-indigo-400"></i> <span>Operations & Support</span>
+            </a>
+            <a href="influence.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-users-viewfinder w-5 text-center"></i> <span>Influence Radar</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+            <div>
+                <h2 class="text-xl font-bold text-white">Operations & Support</h2>
+                <p class="text-xs text-slate-400">Resolution SLA and ticket management</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-filter text-slate-400 ml-2"></i>
+                <select id="bankFilter" class="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer w-48 pr-2">
+                    <option value="All">All Banks Portfolio</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-6 max-w-7xl mx-auto w-full">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Resolution by Priority</h3>
+                        <p class="text-sm text-slate-400">Comparing Resolved vs Pending across urgency levels</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[300px]">
+                        <canvas id="priorityClusteredChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">SLA Performance vs Target</h3>
+                        <p class="text-sm text-slate-400">Resolution rate vs 85% Goal (Bullet Chart)</p>
+                    </div>
+                    <div class="flex-1 flex flex-col justify-center space-y-5" id="bulletChartsContainer">
+                        </div>
+                    <div class="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500/20 rounded"></span> Poor (< 50%)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-amber-500/20 rounded"></span> Fair (50-85%)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-500/20 rounded"></span> Good (> 85%)</span>
+                        <span class="flex items-center gap-1"><span class="w-1 h-3 bg-white mx-1"></span> Target (85%)</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="clean-card rounded-xl p-6">
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Live Feedback Stream</h3>
+                        <p class="text-sm text-slate-400">Detailed tabular view of individual records</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="priorityFilter" class="bg-slate-800 text-slate-200 text-sm p-2 rounded-lg border border-slate-700 focus:outline-none">
+                            <option value="All">All Priorities</option>
+                            <option value="High">High Priority Only</option>
+                        </select>
+                        <select id="statusFilter" class="bg-slate-800 text-slate-200 text-sm p-2 rounded-lg border border-slate-700 focus:outline-none">
+                            <option value="All">All Statuses</option>
+                            <option value="Pending">Pending Only</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto rounded-lg border border-slate-700">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800 text-xs uppercase text-slate-400">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">ID / Date</th>
+                                <th scope="col" class="px-4 py-3">Bank</th>
+                                <th scope="col" class="px-4 py-3 w-1/2">Feedback</th>
+                                <th scope="col" class="px-4 py-3">Priority</th>
+                                <th scope="col" class="px-4 py-3 text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsTableBody" class="divide-y divide-slate-700/50">
+                            </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 text-right" id="tableRecordCount">Showing 0 records</div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let globalData = [];
+        let priorityClusteredChart;
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8';
+        const tooltipOptions = { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 13 }, bodyFont: { size: 14, weight: 'bold' }, padding: 12, cornerRadius: 8, borderColor: '#334155', borderWidth: 1 };
+
+        function initCharts() {
+            // 1. Clustered Column Chart
+            const ctxCluster = document.getElementById('priorityClusteredChart').getContext('2d');
+            priorityClusteredChart = new Chart(ctxCluster, {
+                type: 'bar',
+                data: { labels: ['High', 'Medium', 'Low'], datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: tooltipOptions },
+                    scales: {
+                        x: { grid: { display: false }, border: {display: false} },
+                        y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#334155' }, border: {display: false} }
+                    }
+                }
+            });
+        }
+
+        function loadData() {
+            Papa.parse('D1_Cleaned.csv', {
+                download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+                complete: function(results) {
+                    globalData = results.data;
+                    populateBankFilter();
+                    updateDashboard();
+                }
+            });
+        }
+
+        function populateBankFilter() {
+            const banks = [...new Set(globalData.map(item => item.BankName).filter(Boolean))].sort();
+            const select = document.getElementById('bankFilter');
+            banks.forEach(bank => select.add(new Option(bank, bank)));
+        }
+
+        function processData(bankFilter) {
+            let filtered = bankFilter === "All" ? globalData : globalData.filter(r => r.BankName === bankFilter);
+            
+            // --- 1. Clustered Column Data ---
+            // let priorityMap = { 'High': { res: 0, pen: 0 }, 'Medium': { res: 0, pen: 0 }, 'Low': { res: 0, pen: 0 } };
+            // filtered.forEach(r => {
+            //     if(!r.Priority) return;
+            //     let isRes = String(r.IsResolved).toLowerCase() === 'true';
+            //     if(priorityMap[r.Priority]) {
+            //         isRes ? priorityMap[r.Priority].res++ : priorityMap[r.Priority].pen++;
+            //     }
+            // });
+            let priorityMap = { 'High': { res: 0, pen: 0 }, 'Medium': { res: 0, pen: 0 }, 'Low': { res: 0, pen: 0 } };
+            filtered.forEach(r => {
+                if(!r.Priority) return;
+                let cleanPriority = r.Priority.trim(); // تنظيف النص من أي مسافات مخفية
+                let isRes = String(r.IsResolved).toLowerCase() === 'true';
+                if(priorityMap[cleanPriority]) {
+                    isRes ? priorityMap[cleanPriority].res++ : priorityMap[cleanPriority].pen++;
+                }
+            });
+
+            // --- 2. Bullet Chart Data (SLA vs Target) ---
+            // Target is 85%. We calculate resolution rate per bank if "All" is selected, or just the single bank.
+            let banksToShow = bankFilter === "All" ? [...new Set(globalData.map(r => r.BankName).filter(Boolean))].sort() : [bankFilter];
+            let slaData = banksToShow.map(bank => {
+                let bData = globalData.filter(r => r.BankName === bank);
+                let total = bData.length;
+                let res = bData.filter(r => String(r.IsResolved).toLowerCase() === 'true').length;
+                let rate = total > 0 ? Math.round((res / total) * 100) : 0;
+                return { name: bank, rate: rate, target: 85 };
+            });
+
+            return { clustered: priorityMap, sla: slaData, tableData: filtered };
+        }
+
+        function renderBulletCharts(slaData) {
+            const container = document.getElementById('bulletChartsContainer');
+            let html = '';
+            
+            slaData.forEach(item => {
+                let colorClass = item.rate >= item.target ? 'bg-emerald-500' : (item.rate >= 50 ? 'bg-indigo-500' : 'bg-red-500');
+                html += `
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1 text-slate-300">
+                            <span>${item.name}</span>
+                            <span>${item.rate}%</span>
+                        </div>
+                        <div class="bullet-container">
+                            <div class="bullet-bad"></div>
+                            <div class="bullet-satisfactory"></div>
+                            <div class="bullet-good"></div>
+                            <div class="bullet-measure ${colorClass}" style="width: ${item.rate}%"></div>
+                            <div class="bullet-target" style="left: ${item.target}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('ticketsTableBody');
+            const pFilter = document.getElementById('priorityFilter').value;
+            const sFilter = document.getElementById('statusFilter').value;
+
+            // Apply Table Filters
+            let tData = data.filter(r => {
+                let pMatch = pFilter === "All" || r.Priority.trim() === pFilter;
+                let sMatch = sFilter === "All" || (sFilter === "Pending" ? String(r.IsResolved).toLowerCase() !== 'true' : true);
+                return pMatch && sMatch;
+            });
+
+            // Sort by Date (newest first)
+            tData.sort((a,b) => new Date(b.CreatedAt) - new Date(a.CreatedAt));
+            
+            // Limit to 100 rows for performance
+            let displayData = tData.slice(0, 100);
+            
+            let html = '';
+            displayData.forEach(r => {
+                let dateStr = r.CreatedAt ? r.CreatedAt.split(' ')[0] : 'N/A';
+                let isRes = String(r.IsResolved).toLowerCase() === 'true';
+                
+                let pColor = r.Priority.trim() === 'High' ? 'text-rose-400 bg-rose-400/10' : (r.Priority === 'Medium' ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 bg-slate-400/10');
+                let sColor = isRes ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-300 bg-slate-700';
+                
+                html += `
+                    <tr class="hover:bg-slate-800/50 transition-colors">
+                        <td class="px-4 py-3 whitespace-nowrap"><div class="font-medium text-white">${r.Id}</div><div class="text-xs text-slate-500">${dateStr}</div></td>
+                        <td class="px-4 py-3 whitespace-nowrap">${r.BankName}</td>
+                        <td class="px-4 py-3"><p class="truncate max-w-md" title="${r.FeedbackText}">${r.FeedbackText}</p></td>
+                        <td class="px-4 py-3 whitespace-nowrap"><span class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded ${pColor}">${r.Priority}</span></td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right"><span class="px-2 py-1 text-xs rounded ${sColor}">${isRes ? 'Resolved' : 'Pending'}</span></td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+            document.getElementById('tableRecordCount').innerText = `Showing ${displayData.length} of ${tData.length} filtered records`;
+        }
+
+        function updateDashboard() {
+            const bankName = document.getElementById('bankFilter').value;
+            const data = processData(bankName);
+
+            // 1. Clustered Chart Update
+            priorityClusteredChart.data.datasets = [
+                { label: 'Resolved', data: [data.clustered.High.res, data.clustered.Medium.res, data.clustered.Low.res], backgroundColor: '#10b981', borderRadius: 4 },
+                { label: 'Pending', data: [data.clustered.High.pen, data.clustered.Medium.pen, data.clustered.Low.pen], backgroundColor: '#475569', borderRadius: 4 }
+            ];
+            priorityClusteredChart.update();
+
+            // 2. Bullet Charts Update
+            renderBulletCharts(data.sla);
+
+            // 3. Table Update
+            // Save global reference of current filtered data for table re-filtering
+            window.currentViewData = data.tableData; 
+            renderTable(window.currentViewData);
+        }
+
+        // Event Listeners
+        document.getElementById('bankFilter').addEventListener('change', updateDashboard);
+        document.getElementById('priorityFilter').addEventListener('change', () => renderTable(window.currentViewData));
+        document.getElementById('statusFilter').addEventListener('change', () => renderTable(window.currentViewData));
+        
+        document.addEventListener('DOMContentLoaded', () => { initCharts(); loadData(); });
+    </script>
+</body>
+</html>

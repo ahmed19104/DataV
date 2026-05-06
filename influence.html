@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankLytics | Influence Radar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .clean-card { background-color: #1e293b; border: 1px solid #334155; transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .clean-card:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); transform: translateY(-2px); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-chart-pie text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">BankLytics</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto text-sm font-medium">
+            <a href="index.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-layer-group w-5 text-center"></i> <span>Executive Summary</span>
+            </a>
+            <a href="topics.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-comments w-5 text-center"></i> <span>Sentiment & Topics</span>
+            </a>
+            <a href="operations.html" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 px-4 py-3 rounded-lg transition-colors">
+                <i class="fa-solid fa-headset w-5 text-center"></i> <span>Operations & Support</span>
+            </a>
+            <a href="influence.html" class="flex items-center gap-3 text-white bg-slate-800 px-4 py-3 rounded-lg border-l-4 border-fuchsia-500 shadow-sm">
+                <i class="fa-solid fa-users-viewfinder w-5 text-center text-fuchsia-400"></i> <span>Influence Radar</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+            <div>
+                <h2 class="text-xl font-bold text-white">Influence Radar</h2>
+                <p class="text-xs text-slate-400">Measuring social impact, reach, and topic footprint</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-filter text-slate-400 ml-2"></i>
+                <select id="bankFilter" class="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer w-48 pr-2">
+                    <option value="All">All Banks Portfolio</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-6 max-w-7xl mx-auto w-full">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Topic Impact vs Reach (Bubble Chart)</h3>
+                        <p class="text-sm text-slate-400">X: Topic, Y: Sentiment, Bubble Size: Total Followers Impacted</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[350px]">
+                        <canvas id="impactBubbleChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Top Geographies</h3>
+                        <p class="text-sm text-slate-400">Highest volume states/regions</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[350px]">
+                        <canvas id="locationsBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="clean-card rounded-xl p-6 flex flex-col items-center">
+                    <div class="mb-4 w-full text-left">
+                        <h3 class="text-lg font-bold text-white">Topic Sentiment Footprint</h3>
+                        <p class="text-sm text-slate-400">Radar view of average sentiment across all categories</p>
+                    </div>
+                    <div class="w-full max-w-md relative min-h-[350px]">
+                        <canvas id="topicRadarChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="clean-card rounded-xl p-6 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">Follower Count vs Sentiment</h3>
+                        <p class="text-sm text-slate-400">Do influencers tend to be more critical?</p>
+                    </div>
+                    <div class="flex-1 relative min-h-[350px]">
+                        <canvas id="followersScatterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let globalData = [];
+        let impactBubbleChart, locationsBarChart, topicRadarChart, followersScatterChart;
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8';
+        const tooltipOptions = { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 13 }, bodyFont: { size: 14, weight: 'bold' }, padding: 12, cornerRadius: 8, borderColor: '#334155', borderWidth: 1 };
+
+        function initCharts() {
+            // 1. Bubble Chart
+            const ctxBubble = document.getElementById('impactBubbleChart').getContext('2d');
+            impactBubbleChart = new Chart(ctxBubble, {
+                type: 'bubble',
+                data: { datasets: [{ label: 'Topic Impact', data: [], backgroundColor: 'rgba(217, 70, 239, 0.6)', borderColor: '#d946ef' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { ...tooltipOptions, callbacks: { label: (ctx) => `${ctx.raw.topic}: Sentiment ${ctx.raw.y.toFixed(1)}, Reach: ${ctx.raw.reach.toLocaleString()}` } } },
+                    scales: {
+                        x: { type: 'category', labels: [], grid: { borderDash: [4,4], color: '#334155' } },
+                        y: { min: 0, max: 10, title: { display: true, text: 'Average Sentiment' }, grid: { borderDash: [4,4], color: '#334155' } }
+                    }
+                }
+            });
+
+            // 2. Locations Horizontal Bar
+            const ctxLoc = document.getElementById('locationsBarChart').getContext('2d');
+            locationsBarChart = new Chart(ctxLoc, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tooltipOptions }, scales: { x: { display: false }, y: { grid: { display: false }, border: {display: false} } } }
+            });
+
+            // 3. Radar Chart
+            const ctxRadar = document.getElementById('topicRadarChart').getContext('2d');
+            topicRadarChart = new Chart(ctxRadar, {
+                type: 'radar',
+                data: { labels: [], datasets: [{ label: 'Avg Sentiment', data: [], backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', pointBackgroundColor: '#10b981', borderWidth: 2 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: tooltipOptions },
+                    scales: { r: { angleLines: { color: '#334155' }, grid: { color: '#334155' }, pointLabels: { color: '#cbd5e1', font: { size: 11 } }, ticks: { min: 0, max: 10, stepSize: 2, display: false } } }
+                }
+            });
+
+            // 4. Followers vs Sentiment Scatter Plot
+            const ctxFollowers = document.getElementById('followersScatterChart').getContext('2d');
+            followersScatterChart = new Chart(ctxFollowers, {
+                type: 'scatter',
+                data: { datasets: [{ label: 'User Review', data: [], backgroundColor: 'rgba(245, 158, 11, 0.5)', borderColor: '#f59e0b', pointRadius: 4 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { ...tooltipOptions, callbacks: { label: (ctx) => `Followers: ${ctx.raw.x.toLocaleString()} | Score: ${ctx.raw.y}` } } },
+                    scales: {
+                        x: { type: 'logarithmic', title: { display: true, text: 'Followers (Log Scale)' }, grid: { color: '#334155', borderDash: [4,4] } },
+                        y: { min: 0, max: 10, title: { display: true, text: 'Sentiment' }, grid: { color: '#334155', borderDash: [4,4] } }
+                    }
+                }
+            });
+        }
+
+        function loadData() {
+            Papa.parse('D1_Cleaned.csv', { download: true, header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { globalData = results.data; populateBankFilter(); updateDashboard(); } });
+        }
+
+        function populateBankFilter() {
+            const banks = [...new Set(globalData.map(item => item.BankName).filter(Boolean))].sort();
+            const select = document.getElementById('bankFilter');
+            banks.forEach(bank => select.add(new Option(bank, bank)));
+        }
+
+        function processData(bankFilter) {
+            let filtered = bankFilter === "All" ? globalData : globalData.filter(r => r.BankName === bankFilter);
+            
+            // --- 1. Bubble & Radar Data (Topics) ---
+            let topicStats = {};
+            filtered.forEach(r => {
+                if(!r.Topic) return;
+                if(!topicStats[r.Topic]) topicStats[r.Topic] = { sumScore: 0, count: 0, sumFollowers: 0 };
+                topicStats[r.Topic].sumScore += r.SentimentScore;
+                topicStats[r.Topic].count++;
+                topicStats[r.Topic].sumFollowers += (r.FollowersCount || 0);
+            });
+            
+            let topics = Object.keys(topicStats);
+            let bubbleData = topics.map(t => {
+                let avg = topicStats[t].sumScore / topicStats[t].count;
+                // Calculate reasonable bubble radius (scaling down followers)
+                let radius = Math.max(5, Math.min(30, Math.sqrt(topicStats[t].sumFollowers) / 50)); 
+                return { x: t, y: avg, r: radius, topic: t, reach: topicStats[t].sumFollowers };
+            });
+
+            // Radar Data
+            let radarScores = topics.map(t => topicStats[t].sumScore / topicStats[t].count);
+
+            // --- 2. Locations Data ---
+            let locCount = {};
+            filtered.forEach(r => {
+                if(!r.Location) return;
+                let state = r.Location.split(',')[1]?.trim() || r.Location; // Extract State if format is "City, ST"
+                locCount[state] = (locCount[state] || 0) + 1;
+            });
+            let topLocs = Object.entries(locCount).sort((a,b) => b[1] - a[1]).slice(0, 8); // Top 8
+
+            // --- 3. Scatter Data ---
+            let scatterData = filtered.map(r => ({ x: r.FollowersCount || 1, y: r.SentimentScore }));
+
+            return { bubble: { labels: topics, data: bubbleData }, radar: { labels: topics, data: radarScores }, locations: { labels: topLocs.map(l => l[0]), data: topLocs.map(l => l[1]) }, scatter: scatterData };
+        }
+
+        function updateDashboard() {
+            const bankName = document.getElementById('bankFilter').value;
+            const data = processData(bankName);
+
+            // 1. Bubble
+            impactBubbleChart.options.scales.x.labels = data.bubble.labels;
+            impactBubbleChart.data.datasets[0].data = data.bubble.data;
+            impactBubbleChart.update();
+
+            // 2. Locations
+            locationsBarChart.data.labels = data.locations.labels;
+            locationsBarChart.data.datasets[0].data = data.locations.data;
+            locationsBarChart.update();
+
+            // 3. Radar
+            topicRadarChart.data.labels = data.radar.labels;
+            topicRadarChart.data.datasets[0].data = data.radar.data;
+            topicRadarChart.update();
+
+            // 4. Scatter
+            followersScatterChart.data.datasets[0].data = data.scatter;
+            followersScatterChart.update();
+        }
+
+        document.getElementById('bankFilter').addEventListener('change', updateDashboard);
+        document.addEventListener('DOMContentLoaded', () => { initCharts(); loadData(); });
+    </script>
+</body>
+</html>
